@@ -1,0 +1,85 @@
+/* ✅ Accent Outline Buttons */
+.btn-accent-outline {
+  background: transparent !important;
+  color: var(--accent) !important;
+  border: 2px solid var(--accent) !important;
+  transition: all 0.3s ease;
+}
+
+.btn-accent-outline:hover,
+.btn-accent-outline:focus {
+  background: var(--accent) !important;
+  color: #fff !important;
+}
+
+/* ✅ Stable gray "light" button */
+.btn-accent-light {
+  background: #f1f1f1 !important;
+  color: #444 !important;
+  border: 2px solid #ddd !important;
+}
+
+.btn-accent-light:hover {
+  background: #e5e5e5 !important;
+  color: #000 !important;
+}
+/* ============================= */
+/* Global Dark Mode Adjustments  */
+/* ============================= */
+
+/* Navbar */
+body.dark .navbar {
+  background-color: #1c1c1c !important;
+}
+body.dark .navbar .nav-link,
+body.dark .navbar-brand {
+  color: #f1f1f1 !important;
+}
+
+/* Cards */
+body.dark .card {
+  background-color: #1e1e1e !important;
+  color: #ffffff !important;
+  border: 1px solid #333 !important;
+}
+
+/* Modals */
+body.dark .modal-content {
+  background-color: #1e1e1e !important;
+  color: #ffffff !important;
+}
+
+/* Form controls */
+body.dark .form-control,
+body.dark .form-select {
+  background-color: #2a2a2a !important;
+  color: #ffffff !important;
+  border: 1px solid #444 !important;
+}
+body.dark .form-control:focus,
+body.dark .form-select:focus {
+  background-color: #333 !important;
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.3);
+}
+
+/* Buttons */
+body.dark .btn-light {
+  background-color: #333 !important;
+  color: #f1f1f1 !important;
+  border: 1px solid #555 !important;
+}
+body.dark .btn-light:hover {
+  background-color: #444 !important;
+}
+
+/* Tables */
+body.dark .table {
+  color: #f1f1f1;
+}
+body.dark .table thead {
+  background-color: #2a2a2a;
+}
+body.dark .table tbody tr {
+  border-color: #444;
+}

@@ -1,0 +1,40 @@
+/* Brain Pulse Animation */
+@keyframes brainPulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+.glowing-brain {
+  animation: brainPulse 3s infinite ease-in-out;
+  z-index: 2;
+  position: relative;
+}
+
+/* DNA Background */
+.dna-svg {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 200%;
+  height: 300px;
+  transform: translateY(-50%);
+  animation: moveDNA 15s linear infinite;
+  opacity: 0.5;
+  filter: drop-shadow(0 0 6px cyan);
+  z-index: 0;
+}
+
+/* Reverse DNA movement */
+@keyframes moveDNA {
+  0% {
+    transform: translateX(-50%) translateY(-50%);
+  }
+  100% {
+    transform: translateX(0) translateY(-50%);
+  }
+}
