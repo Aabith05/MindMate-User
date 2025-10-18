@@ -1,22 +1,38 @@
-import { useState, useEffect, useRef } from "react";
-import { Container, Row, Col, Card, Button, Badge } from "react-bootstrap";
-import { useTheme } from "../Context/ThemeContext"; // ✅ import theme
-import "../App.css";
+// ...existing code...
+import React, { useState, useEffect } from "react";
+import { Container, Row, Col, Card, Button } from "react-bootstrap";
+import { useNavigate } from "react-router-dom";
+import { useTheme } from "../Context/ThemeContext";
 import API from "../api";
+import "../App.css";
 
 const CallCaretaker = () => {
-  const [isInCall, setIsInCall] = useState(false);
-  const [selectedCaretaker, setSelectedCaretaker] = useState(null);
-  const [callDuration, setCallDuration] = useState(0);
-  const timerRef = useRef(null);
-
   const [caretakers, setCaretakers] = useState([]);
+  const navigate = useNavigate();
+  const { color } = useTheme();
+
   useEffect(() => {
-    API.get("/caretaker").then((res) => setCaretakers(res.data));
+    API.get("/caretaker").then((res) => {
+      const data = res.data || [];
+
+      // ✅ Assign phone numbers & make only first 2 active for Voice Call
+      const phoneNumbers = [
+        "9787156029",
+        "9875578629",
+        "9875578671",
+        "9875578676",
+        "9875578674",
+      ];
+
+      const updated = data.map((c, index) => ({
+        ...c,
+        phone: phoneNumbers[index % phoneNumbers.length],
+        isActive: index < 2, // only first 2 can call
+      }));
+      setCaretakers(updated);
+    });
   }, []);
 
-  // ✅ get accent color
-  const { color } = useTheme();
   const colorMap = {
     blue: "#3b82f6",
     purple: "#8b5cf6",
@@ -27,122 +43,54 @@ const CallCaretaker = () => {
   };
   const accent = colorMap[color] || "#3b82f6";
 
-  const getStatusVariant = (status) => {
-    switch (status) {
-      case "Available":
-        return "success";
-      case "In Session":
-        return "secondary";
-      case "Offline":
-        return "dark";
-      default:
-        return "light";
+  // ✅ Voice Call handler
+  const handleVoiceCall = async (caretaker) => {
+    if (!caretaker.isActive) return;
+
+    // Open dialer
+    window.location.href = `tel:${caretaker.phone}`;
+
+    // Log call
+    try {
+      await API.post("/stats/call", { caretakerId: caretaker._id });
+      console.log("Call logged successfully");
+    } catch (err) {
+      console.error("Failed to log call activity:", err);
     }
   };
-
-  const startCall = (caretakerId) => {
-    setSelectedCaretaker(caretakerId);
-    setIsInCall(true);
-    setCallDuration(0);
-
-    if (timerRef.current) clearInterval(timerRef.current);
-
-    timerRef.current = setInterval(() => {
-      setCallDuration((prev) => prev + 1);
-    }, 1000);
-  };
-
-  const endCall = () => {
-    setIsInCall(false);
-    setSelectedCaretaker(null);
-    setCallDuration(0);
-
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-  };
-
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, []);
-
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs
-      .toString()
-      .padStart(2, "0")}`;
-  };
-
-  if (isInCall && selectedCaretaker) {
-    const caretaker = caretakers.find((c) => c.id === selectedCaretaker);
-
-    return (
-      <Container className="mt-5 text-center">
-        <h2 className="mb-4">In Call with {caretaker?.name}</h2>
-        <p className="text-muted">{caretaker?.role}</p>
-        <Badge bg="success" className="mb-3">
-          Connected
-        </Badge>
-        <div className="mb-3">
-          <h4>{formatTime(callDuration)}</h4>
-          <p>Call in progress...</p>
-        </div>
-        <div className="bg-light border rounded p-5 mb-4">
-          <p className="text-muted">📹 Video Area</p>
-        </div>
-        <Button variant="danger" size="lg" className="me-3" onClick={endCall}>
-          End Call
-        </Button>
-      </Container>
-    );
-  }
 
   return (
     <>
       {/* Hero Section */}
       <section
         style={{
-          background: "linear-gradient(180deg, #fff 60%, #fce7f3 100%)",
+          background: "linear-gradient(180deg, #fff 60%, #f6add6ff 100%)",
           position: "relative",
           padding: "80px 0",
         }}
       >
         <Container>
           <Row className="align-items-center">
-            {/* Left Content */}
             <Col md={6}>
               <h1 className="fw-bold mb-3" style={{ color: "#be123c" }}>
                 Connect with <br /> Your Caretaker
               </h1>
               <p className="text-muted mb-4">
-                Get personalized support from our experienced team of
-                specialists
+                Get personalized support from our experienced team of specialists
               </p>
-              <div className="d-flex gap-3">
-                {/* 🚨 Emergency button stays red */}
-                <Button
-                  variant="danger"
-                  size="lg"
-                  style={{
-                    background: "#dc2626",
-                    border: "none",
-                  }}
-                >
-                  🚨 Emergency Call
-                </Button>
-
-                {/* Cancel button stays gray */}
-                <Button size="lg" className="btn-accent-light">
-                  Cancel
-                </Button>
-              </div>
+              <Button
+                variant="danger"
+                size="lg"
+                style={{ background: "#dc2626", border: "none" }}
+                onClick={() => {
+                  const emergencyNumber = "9842578618";
+                  window.location.href = `tel:${emergencyNumber}`;
+                }}
+              >
+                🚨 Emergency Call
+              </Button>
             </Col>
 
-            {/* Right Illustration */}
             <Col md={6} className="text-center">
               <img
                 src="https://cdn-icons-png.flaticon.com/512/2966/2966486.png"
@@ -159,8 +107,12 @@ const CallCaretaker = () => {
       <Container className="my-5">
         <Row>
           {caretakers.map((caretaker) => (
-            <Col md={4} key={caretaker.id} className="mb-4">
-              <Card className="shadow-sm h-100 rounded-4 border-0">
+            <Col md={4} key={caretaker._id ?? caretaker.id} className="mb-4">
+              <Card
+                className={`shadow-sm h-100 rounded-4 border-0 ${
+                  !caretaker.isActive ? "opacity-75" : ""
+                }`}
+              >
                 <Card.Body className="text-center">
                   <div
                     className="rounded-circle text-white mx-auto mb-3 d-flex align-items-center justify-content-center"
@@ -171,15 +123,16 @@ const CallCaretaker = () => {
                       background: accent,
                     }}
                   >
-                    {caretaker.initials}
+                    {caretaker.initials ||
+                      caretaker.name?.charAt(0)?.toUpperCase() ||
+                      "?"}
                   </div>
+
                   <Card.Title>{caretaker.name}</Card.Title>
                   <Card.Subtitle className="mb-2 text-muted">
                     {caretaker.role}
                   </Card.Subtitle>
-                  <Badge bg={getStatusVariant(caretaker.status)}>
-                    {caretaker.status}
-                  </Badge>
+
                   <div className="mt-3 text-start">
                     <p>
                       <strong>Experience:</strong> {caretaker.experience}
@@ -188,25 +141,49 @@ const CallCaretaker = () => {
                       <strong>Rating:</strong> ⭐ {caretaker.rating}
                     </p>
                     <p>
+                      <strong>Phone:</strong> 📞 {caretaker.phone}
+                    </p>
+                    <p>
                       <strong>Specialties:</strong>
                     </p>
                     <ul className="small">
-                      {caretaker.specialties.map((s) => (
-                        <li key={s}>{s}</li>
+                      {caretaker.specialties?.map((s, idx) => (
+                        <li key={s ?? idx}>{s}</li>
                       ))}
                     </ul>
                   </div>
 
-                  {/* Buttons with accent outline + hover effect */}
-                  <Button className="w-100 mt-2 btn-accent-outline">
-                    📹 Video Call
-                  </Button>
-
-                  <Button className="w-100 mt-2 btn-accent-outline">
+                  {/* 📞 Voice Call */}
+                  <Button
+                    className="w-100 mt-2"
+                    style={{
+                      background: caretaker.isActive ? accent : "#ccc",
+                      color: caretaker.isActive ? "white" : "#666",
+                      border: "none",
+                      opacity: caretaker.isActive ? 1 : 0.6,
+                      cursor: caretaker.isActive ? "pointer" : "not-allowed",
+                    }}
+                    onClick={() =>
+                      caretaker.isActive && handleVoiceCall(caretaker)
+                    }
+                    disabled={!caretaker.isActive}
+                  >
                     📞 Voice Call
                   </Button>
 
-                  <Button className="w-100 mt-2 btn-accent-outline">
+                  {/* 💬 Message */}
+                  <Button
+                    className="w-100 mt-2"
+                    variant="outline-secondary"
+                    onClick={() =>
+                      navigate("/chat", {
+                        state: {
+                          caretakerId: caretaker._id,
+                          caretakerName: caretaker.name,
+                        },
+                      })
+                    }
+                  >
                     💬 Message
                   </Button>
                 </Card.Body>
@@ -220,3 +197,4 @@ const CallCaretaker = () => {
 };
 
 export default CallCaretaker;
+// ...existing code...

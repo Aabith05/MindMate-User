@@ -1,3 +1,4 @@
+// ...existing code...
 import mongoose from "mongoose";
 
 const achievementSchema = new mongoose.Schema(
@@ -56,8 +57,13 @@ const userSchema = new mongoose.Schema({
     points: { type: Number, default: 0 },
     skills: { type: [skillSchema], default: [] },
     activities: { type: [activitySchema], default: [] },
+    // added counters
+    totalLogins: { type: Number, default: 0 },
+    gamesPlayed: { type: Number, default: 0 },
+    chatMessages: { type: Number, default: 0 },
   },
 });
 
 const User = mongoose.model("User", userSchema);
 export default User;
+// ...existing code...

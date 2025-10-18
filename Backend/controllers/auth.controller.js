@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User.model.js";
 
+
 // Optional: fallback JWT secret for development
 const JWT_SECRET = process.env.JWT_SECRET || "mysecretdevkey";
 
@@ -58,38 +59,55 @@ const googleRegister = async (req, res) => {
   }
 };
 
+// ...existing code...
+// ...existing code...
+// ...existing code...
 const login = async (req, res) => {
   const { name, email, password } = req.body;
 
   try {
-    if (!name || !email || !password) {
-      return res
-        .status(400)
-        .json({ message: "Email and password are required" });
+    // require only email and password (don't require name for login)
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password are required" });
     }
 
     const user = await User.findOne({ email });
     if (!user) {
-      return res
-        .status(400)
-        .json({ message: "Invalid credentials (user not found)" });
+      return res.status(400).json({ message: "Invalid credentials (user not found)" });
     }
 
     const match = await bcrypt.compare(password, user.password);
     if (!match) {
-      return res
-        .status(400)
-        .json({ message: "Invalid credentials (wrong password)" });
+      return res.status(400).json({ message: "Invalid credentials (wrong password)" });
+    }
+
+    // award points + increment counters (existing logic)...
+    try {
+      await User.findByIdAndUpdate(user._id, {
+        $inc: { "profile.totalLogins": 1, "profile.points": 2 },
+        $push: {
+          "profile.activities": {
+            type: "login",
+            title: "Successful login",
+            time: new Date().toISOString(),
+            points: 2,
+          },
+        },
+      });
+    } catch (e) {
+      console.error("Failed to update login stats:", e);
     }
 
     const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "1d" });
+    const updatedUser = await User.findById(user._id).select("-password");
 
-    res.json({ token, user });
+    res.json({ token, user: updatedUser });
   } catch (err) {
     console.error("Login error:", err);
     res.status(500).json({ message: "Server error during login" });
   }
 };
+// ...existing code...
 const changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;

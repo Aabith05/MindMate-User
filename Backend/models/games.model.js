@@ -37,6 +37,9 @@ const gameSchema = new Schema({
     type:String,
     required:true,
   },
+  howTo:{
+    type:String,
+  }
 
   
   

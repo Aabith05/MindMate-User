@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+// ...existing code...
+import React, { useState, useEffect } from "react";
 import {
   Container,
   Row,
@@ -46,38 +47,54 @@ const Settings = () => {
 
   // Load user profile and settings from backend
   useEffect(() => {
-    const user = localStorage.getItem("user");
-    if (user) {
-      const userObj = JSON.parse(user);
-      setProfile({
-        name: userObj.name || "",
-        email: userObj.email || "",
-        photo: userObj.photo || "",
-      });
-      API.get("/auth/settings").then((res) => {
-        setSettings(res.data);
-        setTheme(res.data.theme);
-        setColor(res.data.color);
-        setFont(res.data.font);
-        setAccessibility(res.data.accessibility);
+    const load = async () => {
+      try {
+        const user = localStorage.getItem("user");
+        if (user) {
+          const userObj = JSON.parse(user);
+          setProfile({
+            name: userObj.name || "",
+            email: userObj.email || "",
+            photo: userObj.photo || "",
+          });
+        }
+        // attempt load settings from API; fallback to defaults on error
+        const res = await API.get("/auth/settings");
+        if (res?.data) {
+          setSettings(res.data);
+          if (res.data.theme) setTheme(res.data.theme);
+          if (res.data.color) setColor(res.data.color);
+          if (res.data.font) setFont(res.data.font);
+          if (res.data.accessibility) setAccessibility(res.data.accessibility);
+        }
+      } catch (err) {
+        // ignore - keep defaults
+        console.error("Failed to load settings:", err);
+      } finally {
         setLoading(false);
-      });
-    }
+      }
+    };
+
+    load();
   }, [setTheme, setColor, setFont, setAccessibility]);
 
   // Save settings to backend
   const handleSaveSettings = async () => {
-    await API.put("/auth/settings", {
-      theme,
-      color,
-      font,
-      accessibility,
-      notifications: settings.notifications,
-    });
-    alert("Settings saved!");
+    try {
+      const payload = {
+        theme,
+        color,
+        font,
+        accessibility,
+        notifications: settings.notifications,
+      };
+      await API.put("/auth/settings", payload);
+      alert("Settings saved!");
+    } catch (err) {
+      console.error("Save settings error:", err);
+      alert("Failed to save settings");
+    }
   };
-
-  // Save profile to localStorage (optionally update backend)
 
   const chosenColor =
     {
@@ -108,7 +125,7 @@ const Settings = () => {
                   className="fw-bold mb-4 text-center"
                   style={{ color: chosenColor }}
                 >
-                  ⚙️ Settings
+                  ⚙ Settings
                 </h5>
                 <Nav
                   variant="pills"
@@ -144,9 +161,7 @@ const Settings = () => {
                         className="d-flex align-items-center rounded-3 px-3 py-2"
                         style={{
                           backgroundColor:
-                            activeKey === item.key
-                              ? chosenColor
-                              : "transparent",
+                            activeKey === item.key ? chosenColor : "transparent",
                           color:
                             activeKey === item.key
                               ? "#fff"
@@ -281,38 +296,6 @@ const Settings = () => {
                               notifications: {
                                 ...s.notifications,
                                 email: e.target.checked,
-                              },
-                            }))
-                          }
-                          className="mb-2"
-                        />
-                        <Form.Check
-                          type="switch"
-                          id="smsSwitch"
-                          label="SMS Alerts"
-                          checked={settings.notifications.sms}
-                          onChange={(e) =>
-                            setSettings((s) => ({
-                              ...s,
-                              notifications: {
-                                ...s.notifications,
-                                sms: e.target.checked,
-                              },
-                            }))
-                          }
-                          className="mb-2"
-                        />
-                        <Form.Check
-                          type="switch"
-                          id="pushSwitch"
-                          label="Push Notifications"
-                          checked={settings.notifications.push}
-                          onChange={(e) =>
-                            setSettings((s) => ({
-                              ...s,
-                              notifications: {
-                                ...s.notifications,
-                                push: e.target.checked,
                               },
                             }))
                           }

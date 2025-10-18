@@ -8,7 +8,6 @@ import GamePlay from "./Pages/GamePlay";
 import Contact from "./Pages/Contact";
 import Settings from "./Pages/Settings";
 import Profile from "./Pages/Profile";
-import GameDetail from "./Pages/Gamedetail";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -26,6 +25,7 @@ function App() {
           <ToastContainer />
           <Routes>
             {/* Login and Register NOT inside Layout */}
+            <Route path="/" element={<Login />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
 
@@ -33,7 +33,6 @@ function App() {
             <Route element={<Layout />}>
               <Route path="/home" element={<Home />} />
               <Route path="/games" element={<Games />} />
-              <Route path="/game/:gameId" element={<GameDetail />} />
               <Route path="/chat" element={<Chat />} />
               <Route path="/call" element={<CallCaretaker />} />
               <Route path="/contact" element={<Contact />} />

@@ -5,18 +5,21 @@ const API = axios.create({
 });
 
 API.interceptors.request.use((config) => {
-   if (
-    config.url.startsWith("/games/all") ||
-    config.url.startsWith("/games/")
-  ) {
-    // Do NOT add token for public games endpoints
+  const url = config.url || "";
+  const method = (config.method || "get").toLowerCase();
+
+  // Allow public GET requests for listing/reading games without token,
+  // but DO attach token for POST/PUT/etc (play endpoint).
+  if (method === "get" && (url === "/games/all" || url.startsWith("/games/"))) {
     return config;
   }
+
   const token = localStorage.getItem("token");
   if (token) {
+    config.headers = config.headers || {};
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
-});
+}, (err) => Promise.reject(err));
 
 export default API;

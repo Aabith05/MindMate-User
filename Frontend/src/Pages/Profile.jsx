@@ -1,15 +1,20 @@
-import { useState, useEffect } from "react";
-import { Container, Row, Col, Card, Badge, ProgressBar, Tabs, Tab, Button } from "react-bootstrap";
+import React, { useEffect, useState } from "react";
 import {
-  Trophy,
-  TrendingUp,
-  Brain,
-  Heart,
-  Users,
-  Award
-} from "lucide-react";
+  Container,
+  Row,
+  Col,
+  Card,
+  Badge,
+  ProgressBar,
+  Tabs,
+  Tab,
+  Pagination,
+} from "react-bootstrap";
+import { Trophy, TrendingUp, LogIn, Gamepad, Users } from "lucide-react";
 import { useTheme } from "../Context/ThemeContext";
 import API from "../api";
+
+const PAGE_SIZE = 10;
 
 const Profile = () => {
   const [activeTab, setActiveTab] = useState("overview");
@@ -19,43 +24,100 @@ const Profile = () => {
     name: "",
     photo: "",
     email: "",
-    level: 0,
+    level: 1,
   });
 
-  // Profile state loaded from backend
   const [profile, setProfile] = useState({
     points: 0,
+    totalLogins: 0,
+    gamesPlayed: 0,
+    chatMessages: 0,
     achievements: [],
-    skills: [],
     activities: [],
   });
 
-  useEffect(() => {
-    API.get("/auth/profile").then(res => {
-      // Defensive: fallback to empty arrays if undefined
-      const p = res.data || {};
-      setProfile(prev => ({
-        ...prev,
-        name: p.name || "",
-        photo: p.photo || "",
-        email: p.email || "",
-        level: p.level || 1,
-        points: p.points || 0,
-        achievements: Array.isArray(p.achievements) ? p.achievements : [],
-        skills: Array.isArray(p.skills) ? p.skills : [],
-        activities: Array.isArray(p.activities) ? p.activities : [],
-      }));
-    });
-  }, []);
+  const [todayCounts, setTodayCounts] = useState({
+    logins: 0,
+    games: 0,
+    chats: 0,
+    points: 0,
+  });
+
+  // pagination state for overall activities
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
-    const userInfo = localStorage.getItem("user");
-    if (userInfo) {
-      setUser(JSON.parse(userInfo));
+    const stored = localStorage.getItem("user");
+    if (stored) {
+      try {
+        setUser(JSON.parse(stored));
+      } catch {}
     }
   }, []);
 
-  // Accent color
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await API.get("/auth/profile");
+        const p = res.data || {};
+        setProfile((prev) => ({ ...prev, ...p }));
+      } catch (err) {
+        console.error("Error fetching profile:", err);
+      }
+    };
+
+    fetchProfile();
+  }, []);
+
+  useEffect(() => {
+    computeTodayCounts(profile.activities || []);
+  }, [profile.activities]);
+
+  const isToday = (iso) => {
+    if (!iso) return false;
+    const today = new Date();
+    const d = new Date(iso);
+    return (
+      d.getFullYear() === today.getFullYear() &&
+      d.getMonth() === today.getMonth() &&
+      d.getDate() === today.getDate()
+    );
+  };
+
+  const computeTodayCounts = (activities = []) => {
+    let logins = 0,
+      games = 0,
+      chats = 0,
+      points = 0;
+    activities.forEach((a) => {
+      if (!a) return;
+      if (isToday(a.time)) {
+        points += Number(a.points || 0);
+        if (a.type === "login") logins++;
+        if (a.type === "game") games++;
+        if (a.type === "chat") chats++;
+      }
+    });
+
+    setTodayCounts({ logins, games, chats, points });
+  };
+
+  // derive lists for UI
+  const overallActivities = profile.activities ? [...profile.activities] : [];
+  const todayActivities = overallActivities.filter((a) => isToday(a.time));
+
+// pagination derived values
+  const totalPages = Math.max(1, Math.ceil(overallActivities.length / PAGE_SIZE));
+  // ensure currentPage stays in range
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(1);
+  }, [overallActivities.length, totalPages, currentPage]);
+
+  const pagedOverall = overallActivities
+    .slice()
+    .reverse()
+    .slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
   const colorMap = {
     blue: "#3b82f6",
     purple: "#8b5cf6",
@@ -68,11 +130,13 @@ const Profile = () => {
 
   const totalPoints = profile.points || 0;
   const nextLevelPoints = 3000;
-  const currentLevelProgress = (totalPoints / nextLevelPoints) * 100;
+  const progress = Math.min(
+    Math.round((totalPoints / nextLevelPoints) * 100),
+    100
+  );
 
   return (
     <Container fluid className="py-5 min-vh-100">
-      {/* Profile Header */}
       <Card className="mb-4 shadow-sm">
         <Card.Body>
           <Row className="align-items-center">
@@ -100,103 +164,87 @@ const Profile = () => {
               <div className="ms-3">
                 <h3>{user.name || "Unnamed User"}</h3>
                 <p className="text-muted">{user.email}</p>
-                <Badge style={{ background: accent }}>Level {user.level || 1}</Badge>
-                <Badge bg="success" className="ms-2">Active</Badge>
+                <Badge style={{ background: accent }}>Level {user.level}</Badge>
+                <Badge bg="success" className="ms-2">
+                  Active
+                </Badge>
               </div>
             </Col>
 
-            <Col md={4} className="text-center">
-              <h4 style={{ color: accent }}>{totalPoints}</h4>
-              <p className="text-muted">Total Points</p>
-            </Col>
             <Col md={2} className="text-center">
-              <h4 style={{ color: accent }}>{profile.activities.length || 0}</h4>
-              <p className="text-muted">Activities</p>
+              <h4 style={{ color: accent }}>{todayCounts.logins || 0}</h4>
+              <p className="text-muted mb-1">Connections</p>
             </Col>
+
             <Col md={2} className="text-center">
-              <h4 style={{ color: accent }}>{profile.achievements.length || 0}</h4>
-              <p className="text-muted">Achievements</p>
+              <h4 style={{ color: accent }}>{todayCounts.games || 0}</h4>
+              <p className="text-muted mb-1">Games Played</p>
+            </Col>
+
+            <Col md={2} className="text-center">
+              <h4 style={{ color: accent }}>{todayCounts.chats || 0}</h4>
+              <p className="text-muted mb-1">Interactions</p>
+            </Col>
+
+            <Col md={2} className="text-center">
+              <h4 style={{ color: accent }}>{todayCounts.points || 0}</h4>
+              <p className="text-muted mb-1">Points Earned</p>
             </Col>
           </Row>
 
-          {/* Progress bar */}
           <Row className="mt-4">
             <Col>
               <div className="d-flex justify-content-between">
-                <span>Progress to Level {profile.level + 1}</span>
-                <span>{totalPoints}/{nextLevelPoints} points</span>
+                <span>Progress to Level {user.level + 1}</span>
+                <span>
+                  {totalPoints}/{nextLevelPoints} points
+                </span>
               </div>
               <ProgressBar
-                now={currentLevelProgress}
+                now={progress}
                 className="mt-2"
                 style={{ backgroundColor: "#e9ecef" }}
-              >
-                <div
-                  className="progress-bar"
-                  style={{
-                    width: `${currentLevelProgress}%`,
-                    background: accent,
-                  }}
-                />
-              </ProgressBar>
+              />
             </Col>
           </Row>
         </Card.Body>
       </Card>
 
-      {/* Tabs */}
       <Tabs
         activeKey={activeTab}
         onSelect={(k) => setActiveTab(k || "overview")}
         className="mb-3"
         justify
       >
-        {[
-          { key: "overview", label: "Overview" },
-          { key: "achievements", label: "Achievements" },
-          { key: "skills", label: "Skills" },
-          { key: "activity", label: "Activity" },
-        ].map((tab) => (
-          <Tab
-            key={tab.key}
-            eventKey={tab.key}
-            title={
-              <span
-                style={{
-                  color: activeTab === tab.key ? accent : "#6c757d",
-                  fontWeight: activeTab === tab.key ? "600" : "400",
-                  transition: "color 0.3s ease",
-                }}
-              >
-                {tab.label}
-              </span>
-            }
-          />
-        ))}
+        <Tab eventKey="overview" title="Overview" />
+        <Tab eventKey="activity" title="Activity" />
       </Tabs>
 
-      {/* Overview */}
       {activeTab === "overview" && (
         <Row>
           <Col md={6}>
             <Card className="mb-4">
               <Card.Header>
-                <Trophy size={18} className="me-2" style={{ color: accent }} /> Recent Achievements
+                <Trophy size={18} className="me-2" style={{ color: accent }} />{" "}
+                Recent Achievements
               </Card.Header>
               <Card.Body>
-                {profile.achievements
-                  .filter(a => a.earned)
-                  .slice(0, 3)
-                  .map((a, idx) => (
+                {profile.achievements?.length > 0 ? (
+                  profile.achievements.slice(0, 3).map((a, idx) => (
                     <div key={idx} className="d-flex align-items-center mb-3">
                       <Trophy className="me-3" style={{ color: accent }} />
                       <div>
                         <h6>{a.title}</h6>
                         <p className="text-muted small">{a.description}</p>
                       </div>
-                      <Badge bg="secondary" className="ms-auto">{a.date}</Badge>
+                      <Badge bg="secondary" className="ms-auto">
+                        {a.date}
+                      </Badge>
                     </div>
-                  ))}
+                  ))
+                ) : (
+                  <p className="text-muted">No achievements yet.</p>
+                )}
               </Card.Body>
             </Card>
           </Col>
@@ -204,136 +252,169 @@ const Profile = () => {
           <Col md={6}>
             <Card className="mb-4">
               <Card.Header>
-                <TrendingUp size={18} className="me-2" style={{ color: accent }} /> Skill Development
+                <TrendingUp
+                  size={18}
+                  className="me-2"
+                  style={{ color: accent }}
+                />{" "}
+                Activity Summary
               </Card.Header>
               <Card.Body>
-                {profile.skills.map((skill, idx) => (
-                  <div key={idx} className="mb-3">
-                    <div className="d-flex justify-content-between">
-                      <span>{skill.name}</span>
-                      <small>Level {skill.level}/{skill.maxLevel}</small>
-                    </div>
-                    <ProgressBar
-                      now={skill.progress}
-                      style={{ backgroundColor: "#e9ecef" }}
-                    >
-                      <div
-                        className="progress-bar"
-                        style={{
-                          width: `${skill.progress}%`,
-                          background: accent,
-                        }}
-                      />
-                    </ProgressBar>
-                  </div>
-                ))}
+                <p className="mb-2">
+                  <LogIn size={16} className="me-2" /> Connections:{" "}
+                  <strong>{profile.totalLogins}</strong>{" "}
+                  <span className="text-primary ms-2">
+                    ({todayCounts.logins} today)
+                  </span>
+                </p>
+                <p className="mb-2">
+                  <Gamepad size={16} className="me-2" /> Games Played:{" "}
+                  <strong>{profile.gamesPlayed}</strong>{" "}
+                  <span className="text-primary ms-2">
+                    ({todayCounts.games} today)
+                  </span>
+                </p>
+                <p className="mb-0">
+                  <Users size={16} className="me-2" /> Interactions:{" "}
+                  <strong>{profile.chatMessages}</strong>{" "}
+                  <span className="text-primary ms-2">
+                    ({todayCounts.chats} today)
+                  </span>
+                </p>
               </Card.Body>
             </Card>
           </Col>
         </Row>
       )}
 
-      {/* Achievements */}
-      {activeTab === "achievements" && (
-        <Row>
-          {profile.achievements.map((a, idx) => (
-            <Col md={4} key={idx}>
-              <Card className={`mb-4 ${a.earned ? "border-success" : "opacity-50"}`}>
-                <Card.Body className="text-center">
-                  <Trophy size={32} style={{ color: a.earned ? accent : "#aaa" }} />
-                  <h6 className="mt-3">{a.title}</h6>
-                  <p className="small text-muted">{a.description}</p>
-                  {a.earned ? (
-                    <Badge style={{ background: accent }}>
-                      <Award size={14} className="me-1" /> Earned
-                    </Badge>
-                  ) : (
-                    <>
-                      <ProgressBar
-                        now={a.progress}
-                        className="mb-2"
-                        style={{ backgroundColor: "#e9ecef" }}
-                      >
-                        <div
-                          className="progress-bar"
-                          style={{
-                            width: `${a.progress}%`,
-                            background: accent,
-                          }}
-                        />
-                      </ProgressBar>
-                      <Badge bg="secondary">{a.progress}% Complete</Badge>
-                    </>
-                  )}
-                </Card.Body>
-              </Card>
-            </Col>
-          ))}
-        </Row>
-      )}
-
-      {/* Skills */}
-      {activeTab === "skills" && (
-        <Row>
-          {profile.skills.map((skill, idx) => (
-            <Col md={6} key={idx}>
-              <Card className="mb-4">
-                <Card.Body>
-                  <h5>{skill.name}</h5>
-                  <p>Level {skill.level} of {skill.maxLevel}</p>
-                  <ProgressBar
-                    now={skill.progress}
-                    className="mb-3"
-                    style={{ backgroundColor: "#e9ecef" }}
-                  >
-                    <div
-                      className="progress-bar"
-                      style={{
-                        width: `${skill.progress}%`,
-                        background: accent,
-                      }}
-                    />
-                  </ProgressBar>
-                  <Button
-                    variant="outline-primary"
-                    className="w-100"
-                    style={{
-                      color: accent,
-                      borderColor: accent,
-                    }}
-                  >
-                    Practice {skill.name}
-                  </Button>
-                </Card.Body>
-              </Card>
-            </Col>
-          ))}
-        </Row>
-      )}
-
-      {/* Activity */}
       {activeTab === "activity" && (
-        <Card>
-          <Card.Body>
-            {profile.activities.map((a, idx) => (
-              <div key={idx} className="d-flex align-items-center mb-3">
-                {a.type === "game" && <Brain className="me-3" style={{ color: accent }} />}
-                {a.type === "chat" && <Users className="me-3" style={{ color: accent }} />}
-                {a.type === "achievement" && <Trophy className="me-3" style={{ color: accent }} />}
-                {a.type === "caretaker" && <Heart className="me-3 text-danger" />}
-                <div>
-                  <h6>{a.title}</h6>
-                  <p className="small text-muted">{a.time}</p>
-                </div>
-                {a.points > 0 && (
-                  <Badge style={{ background: accent }} className="ms-auto">
-                    +{a.points} pts
-                  </Badge>
-                )}
-              </div>
-            ))}
-          </Card.Body>
-        </Card>
+        <Row>
+          <Col>
+            <Card className="mb-4">
+              <Card.Body>
+                <Tabs
+                  defaultActiveKey="today"
+                  id="activity-subtabs"
+                  className="mb-3"
+                >
+                  <Tab
+                    eventKey="today"
+                    title={`Today (${todayActivities.length})`}
+                  >
+                    {todayActivities.length > 0 ? (
+                      todayActivities.slice().reverse().map((a, idx) => (
+                        <div key={idx} className="d-flex align-items-center mb-3">
+                          <div style={{ width: 40 }}>
+                            {a.type === "game"
+                              ? "🎮"
+                              : a.type === "chat"
+                              ? "💬"
+                              : "🔑"}
+                          </div>
+                          <div>
+                            <h6 className="mb-0">{a.title}</h6>
+                            <p className="small text-muted mb-0">
+                              {new Date(a.time).toLocaleString()}
+                            </p>
+                          </div>
+                          {a.points > 0 && (
+                            <Badge
+                              style={{ background: accent }}
+                              className="ms-auto"
+                            >
+                              +{a.points} pts
+                            </Badge>
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-muted">No activity today.</p>
+                    )}
+                  </Tab>
+
+                  <Tab
+                    eventKey="overall"
+                    title={`Overall (${overallActivities.length})`}
+                  >
+                    {overallActivities.length === 0 ? (
+                      <p className="text-muted">No activity yet.</p>
+                    ) : (
+                      <>
+                        {pagedOverall.map((a, idx) => (
+                          <div key={idx} className="d-flex align-items-center mb-3">
+                            <div style={{ width: 40 }}>
+                              {a.type === "game"
+                                ? "🎮"
+                                : a.type === "chat"
+                                ? "💬"
+                                : "🔑"}
+                            </div>
+                            <div>
+                              <h6 className="mb-0">{a.title}</h6>
+                              <p className="small text-muted mb-0">
+                                {new Date(a.time).toLocaleString()}
+                              </p>
+                            </div>
+                            {a.points > 0 && (
+                              <Badge
+                                style={{ background: accent }}
+                                className="ms-auto"
+                              >
+                                +{a.points} pts
+                              </Badge>
+                            )}
+                          </div>
+                        ))}
+
+                        {/* Pagination controls */}
+                        <div className="d-flex justify-content-center mt-3">
+                          <Pagination size="sm">
+                            <Pagination.First
+                              onClick={() => setCurrentPage(1)}
+                              disabled={currentPage === 1}
+                            />
+                            <Pagination.Prev
+                              onClick={() =>
+                                setCurrentPage((p) => Math.max(1, p - 1))
+                              }
+                              disabled={currentPage === 1}
+                            />
+
+                            {Array.from({ length: totalPages }, (_, i) => i + 1)
+                              .slice(
+                                Math.max(0, currentPage - 3),
+                                Math.min(totalPages, currentPage + 2)
+                              )
+                              .map((p) => (
+                                <Pagination.Item
+                                  key={p}
+                                  active={p === currentPage}
+                                  onClick={() => setCurrentPage(p)}
+                                >
+                                  {p}
+                                </Pagination.Item>
+                              ))}
+
+                            <Pagination.Next
+                              onClick={() =>
+                                setCurrentPage((p) => Math.min(totalPages, p + 1))
+                              }
+                              disabled={currentPage === totalPages}
+                            />
+                            <Pagination.Last
+                              onClick={() => setCurrentPage(totalPages)}
+                              disabled={currentPage === totalPages}
+                            />
+                          </Pagination>
+                        </div>
+                      </>
+                    )}
+                  </Tab>
+                </Tabs>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
       )}
     </Container>
   );

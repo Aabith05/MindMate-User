@@ -1,18 +1,73 @@
+// ...existing code...
+import { useState, useEffect } from "react";
 import { Container, Row, Col, Form, Button, Card } from "react-bootstrap";
+import axios from "axios";
 
 const Contact = () => {
+  const [formData, setFormData] = useState({
+    name: "",
+    message: "",
+  });
+
+  const [userEmail, setUserEmail] = useState("");
+  const [status, setStatus] = useState("");
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      try {
+        const user = JSON.parse(storedUser);
+        setUserEmail(user.email || "");
+        setFormData((prev) => ({ ...prev, name: user.name || "" }));
+      } catch (e) {
+        console.error("Failed to parse stored user:", e);
+      }
+    }
+  }, []);
+
+  const handleChange = (e) => {
+    setFormData((p) => ({
+      ...p,
+      [e.target.name]: e.target.value,
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setStatus("Sending...");
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.post(
+        "http://localhost:3000/api/contact",
+        { ...formData, email: userEmail },
+        {
+          headers: {
+            Authorization: `Bearer ${token || ""}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      setStatus(res?.data?.message || "Message sent");
+      setFormData({ name: formData.name, message: "" });
+    } catch (err) {
+      console.error("Contact submit error:", err?.response || err);
+      setStatus(
+        err?.response?.data?.message ||
+          "Failed to send message. Please try again later."
+      );
+    }
+  };
+
   return (
     <Container
       fluid
       className="d-flex align-items-center"
-      style={{
-        background: "#f5f3ff",
-        minHeight: "100vh",   // ensures full height
-      }}
+      style={{ background: "#f5f3ff", minHeight: "100vh" }}
     >
       <Container>
         <Row className="align-items-center">
-          {/* Left Illustration */}
           <Col md={6} className="mb-4 mb-md-0 text-center">
             <img
               src="./Globalization-amico.svg"
@@ -22,17 +77,20 @@ const Contact = () => {
             />
           </Col>
 
-          {/* Right Contact Form */}
           <Col md={6}>
             <Card className="shadow-sm border-0 p-4 rounded-4">
               <h3 className="fw-bold mb-4 text-center">Contact Us</h3>
-              <Form>
+              <Form onSubmit={handleSubmit}>
                 <Form.Group className="mb-3" controlId="name">
                   <Form.Label>Name</Form.Label>
                   <Form.Control
                     type="text"
+                    name="name"
                     placeholder="Enter your name"
+                    value={formData.name}
+                    onChange={handleChange}
                     className="rounded-3"
+                    required
                   />
                 </Form.Group>
 
@@ -40,7 +98,8 @@ const Contact = () => {
                   <Form.Label>Email</Form.Label>
                   <Form.Control
                     type="email"
-                    placeholder="Enter your email"
+                    value={userEmail}
+                    disabled
                     className="rounded-3"
                   />
                 </Form.Group>
@@ -49,9 +108,13 @@ const Contact = () => {
                   <Form.Label>Message</Form.Label>
                   <Form.Control
                     as="textarea"
+                    name="message"
                     rows={4}
                     placeholder="Write your message"
+                    value={formData.message}
+                    onChange={handleChange}
                     className="rounded-3"
+                    required
                   />
                 </Form.Group>
 
@@ -65,6 +128,7 @@ const Contact = () => {
                   </Button>
                 </div>
               </Form>
+              {status && <p className="text-center mt-3">{status}</p>}
             </Card>
           </Col>
         </Row>
@@ -74,3 +138,4 @@ const Contact = () => {
 };
 
 export default Contact;
+// ...existing code...
