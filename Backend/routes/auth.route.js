@@ -1,7 +1,7 @@
+// Backend/routes/auth.route.js
 import express from "express";
 import authController from "../controllers/auth.controller.js";
 import auth from "../middleware/auth.js";
-import User from "../models/User.model.js";
 
 const authrouter = express.Router();
 
@@ -18,5 +18,12 @@ authrouter.put("/settings", auth, authController.updateSettings);
 // Profiles
 authrouter.get("/profile", auth, authController.getProfile);
 authrouter.put("/profile", auth, authController.updateProfile);
+
+// ---------- Privacy / OTP endpoints used by frontend ----------
+authrouter.post("/privacy/request-otp", auth, authController.requestPasswordOtp);
+authrouter.post("/privacy/reset", auth, authController.resetPasswordWithOtp);
+
+authrouter.post("/privacy/request-email-change", auth, authController.requestEmailChangeOtp);
+authrouter.post("/privacy/confirm-email", auth, authController.confirmEmailChange);
 
 export default authrouter;
