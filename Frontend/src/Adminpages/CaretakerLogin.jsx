@@ -1,16 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useTheme } from "../Context/ThemeContext";
 import { useNavigate } from "react-router-dom";
-import { GoogleLogin } from "@react-oauth/google";
-import { jwtDecode } from "jwt-decode";
 import { toast } from "react-toastify";
 import { Mosaic } from "react-loading-indicators";
 import API from "../api";
 import "../App.css";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 
-const Login = () => {
-  const [name, setName] = useState("");
+const CaretakerLogin = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -21,32 +18,23 @@ const Login = () => {
   const bgClass = theme === "dark" ? "bg-dark text-light" : "bg-light text-dark";
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token) navigate("/home");
+    const token = localStorage.getItem("caretakerToken");
+    if (token) navigate("/caretaker/home");
   }, [navigate]);
-
-  useEffect(() => {
-    if (localStorage.getItem("registered") === "true") {
-      toast.success("Registered successfully! Please login to continue.", {
-        position: "top-right",
-        autoClose: 3000,
-      });
-      localStorage.removeItem("registered");
-    }
-  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      const res = await API.post("/auth/login", { name, email, password });
+      const res = await API.post("/caretaker/login", { email, password });
       if (res.data.token) {
-        localStorage.setItem("token", res.data.token);
-        localStorage.setItem("user", JSON.stringify(res.data.user));
-        navigate("/home");
+        localStorage.setItem("caretakerToken", res.data.token);
+        localStorage.setItem("caretaker", JSON.stringify(res.data.caretaker));
+        toast.success("Caretaker login successful!");
+        navigate("/caretaker/home");
       }
     } catch {
-      toast.error("Invalid credentials. Please try again!");
+      toast.error("Invalid caretaker credentials. Please try again!");
     } finally {
       setIsLoading(false);
     }
@@ -63,18 +51,17 @@ const Login = () => {
   return (
     <div className="login-container">
       <div className="login-content">
-        {/* 🌿 Left Section */}
+        {/* 🧠 Left Section (Caretaker Intro) */}
         <div className="welcome-section">
           <div className="welcome-text">
-            <h1>Welcome Back to MindMate 🧠</h1>
-            <h2>Where Every Thought Finds Clarity</h2>
+            <h1>Welcome Back, Caretaker 🩺</h1>
+            <h2>Your Support Matters</h2>
             <p>
-              Reconnect with your personalized space for cognitive growth and mental wellness.
-              Track your progress, play games that sharpen your mind, and stay motivated with a
-              caring community that supports your journey to better mental fitness.
+              Manage your assigned users, monitor their well-being, and offer timely assistance.
+              Log in to access tools and dashboards that help you make a positive impact every day.
             </p>
             <p className="tagline">
-              “Every login is a step toward a sharper, healthier you.”
+              “Every login is a step toward caring for someone’s mental wellness.” ❤️
             </p>
           </div>
           <div className="geometric-shape-1"></div>
@@ -84,29 +71,16 @@ const Login = () => {
         {/* 🔑 Right Section */}
         <div className="form-section">
           <div className="form-container">
-            <h2>Sign In</h2>
-            <p className="form-subtitle">Welcome to your MindMate world</p>
+            <h2>Caretaker Login</h2>
+            <p className="form-subtitle">Access your Caretaker Dashboard</p>
 
             <form onSubmit={handleLogin}>
-              <div className="input-group">
-                <div className="input-wrapper">
-                  <span className="input-icon">👤</span>
-                  <input
-                    type="text"
-                    placeholder="Username"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-
               <div className="input-group">
                 <div className="input-wrapper">
                   <span className="input-icon">📧</span>
                   <input
                     type="email"
-                    placeholder="Email"
+                    placeholder="Caretaker Email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -154,59 +128,36 @@ const Login = () => {
               </button>
             </form>
 
-            <div className="divider d-flex justify-content-center"><span>Or</span></div>
-
-            <div className="google-login-btn">
-              <GoogleLogin
-                onSuccess={async (credentialResponse) => {
-                  const decoded = jwtDecode(credentialResponse.credential);
-                  const email = decoded.email;
-                  try {
-                    const res = await API.post("/auth/googleRegister", { email });
-                    localStorage.setItem("token", res.data.token);
-                    localStorage.setItem("user", JSON.stringify(res.data.user));
-                    navigate("/home");
-                  } catch (err) {
-                    toast.error("Google Login failed");
-                  }
-                }}
-                onError={() => toast.error("Google Login Failed")}
-              />
+            <div className="divider d-flex justify-content-center">
+              <span>Or</span>
             </div>
 
             <div className="sign-up-link">
-              Don’t have an account?{" "}
-              <a href="/register" onClick={() => navigate("/register")}>
-                Sign Up
-              </a>
-            </div>
-
-            {/* 🧩 Caretaker Login Button */}
-            <div className="caretaker-login-link" style={{ marginTop: "15px", textAlign: "center" }}>
-              Are you a caretaker?{" "}
+              Are you an admin?{" "}
               <button
                 type="button"
-                onClick={() => navigate("/caretaker-login")}
+                onClick={() => navigate("/login")}
                 style={{
-                  background: "none",
-                  border: "none",
-                  color: "#4f46e5",
-                  fontWeight: "600",
-                  cursor: "pointer",
-                  textDecoration: "underline",
+                    background: "none",
+                    border: "none",
+                    color: "#06b6d4",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                    textDecoration: "underline",
                 }}
-              >
-                Login Here
-              </button>
+                >
+                Go to User Login
+                </button>
+
             </div>
           </div>
         </div>
       </div>
 
-      {/* 🔵 Mobile Gradient Background */}
+      {/* 🔵 Mobile Background */}
       <div className="mobile-background"></div>
 
-      {/* Embedded CSS for responsiveness */}
+      {/* Same responsive styling */}
       <style>{`
         .login-container {
           position: relative;
@@ -232,7 +183,7 @@ const Login = () => {
 
         .welcome-section {
           flex: 1;
-          background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+          background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
           color: white;
           padding: 50px;
           display: flex;
@@ -280,7 +231,7 @@ const Login = () => {
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
             z-index: 1;
           }
         }
@@ -289,4 +240,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default CaretakerLogin;
